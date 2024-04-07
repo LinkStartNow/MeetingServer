@@ -4,5 +4,5 @@ int main()
 {
     CKernel::GetKernel();
     cout << "hello" << endl;
-    cout << "success" << endl;
+    cout << "关闭加速器" << endl;
 }
