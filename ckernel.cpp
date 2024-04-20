@@ -67,8 +67,6 @@ CKernel::CKernel(): m_sock_accept(new Tcpsock(IP, PORT)), m_epoll(new Myepoll), 
     }
 }
 
-
-
 void CKernel::SetFun()
 {
     cout << __func__ << endl;
@@ -78,6 +76,7 @@ void CKernel::SetFun()
     FUNMAP(REG_RQ)          = bind(&CKernel::DealRegRq, this, placeholders::_1, placeholders::_2);
     FUNMAP(CREATE_ROOM_RQ)  = bind(&CKernel::DealCreateRoom, this, placeholders::_1, placeholders::_2);
     FUNMAP(JOIN_ROOM_RQ)    = bind(&CKernel::DealJoinRoom, this, placeholders::_1, placeholders::_2);
+    FUNMAP(LEAVE_INFO)      = bind(&CKernel::DealLeaveInfo, this, placeholders::_1, placeholders::_2);
 }
 
 void Send(Tcpsock* sock, CJson& rs)
@@ -221,6 +220,9 @@ void CKernel::DealCreateRoom(CJson *buf, Tcpsock *sock)
     int UserId = buf->json_get_int("id");
     m_MapRoomIdToUserId[RoomId].emplace_back(UserId);
 
+    // 回收json
+    delete buf; buf = nullptr;
+
     cout << "room: " << RoomId << endl;
     cout << "user:" << UserId << endl;
 
@@ -239,6 +241,9 @@ void CKernel::DealJoinRoom(CJson *buf, Tcpsock *sock)
     int UserId = buf->json_get_int("id");
     int RoomId = buf->json_get_int("room_id");
 
+    // 获取完信息，回收json
+    delete buf; buf = nullptr;
+
     CJson rs;
     rs.json_add_value("type", JOIN_ROOM_RS);
 
@@ -255,10 +260,20 @@ void CKernel::DealJoinRoom(CJson *buf, Tcpsock *sock)
     room.emplace_back(UserId);
 
     // 返回房间内所有用户id
-    vector<int>&& MemberList = room.GetAll();
-    cout << "room has: ";
-    for (int x: MemberList) cout << x << ' ';
-    cout << endl;
+    vector<int> MemberList;
+    room.Copy(MemberList);
+//    cout << "room has: ";
+    CJson log;
+    log.json_add_value("type", JOIN_INFO);
+    log.json_add_value("id", UserId);
+    for (int x: MemberList) {
+        cout << x << ' ';
+        // 向其他用户发送上线信息
+        if (x != UserId) {
+            Tcpsock* to = m_MapIdToInfo.GetVal(x).GetSock();
+            Send(to, log);
+        }
+    } cout << endl;
 
 
     cout << "room: " << RoomId << endl;
@@ -268,6 +283,39 @@ void CKernel::DealJoinRoom(CJson *buf, Tcpsock *sock)
     rs.json_add_value("RoomId", RoomId);
     rs.json_add_value("MemberList", MemberList);
     Send(sock, rs);
+}
+
+void CKernel::DealLeaveInfo(CJson *buf, Tcpsock *sock)
+{
+    // 回收sock,这里用不到
+    delete sock; sock = nullptr;
+
+    int user_id = buf->json_get_int("UserId");
+    int room_id = buf->json_get_int("RoomId");
+
+    auto& room = m_MapRoomIdToUserId[room_id];
+    vector<int> member;
+    room.Copy(member);
+
+    // 给其他用户发信息，通知该用户离开
+    for (const int& m: member) {
+        if (m != user_id) {
+            Tcpsock* to = m_MapIdToInfo.GetVal(m).GetSock();
+            Send(to, *buf);
+        }
+    }
+
+    // 回收json
+    delete buf; buf = nullptr;
+
+    // 将当前用户踢出房间
+    room.erase(user_id);
+
+    // 如果房间没人了，将房间销毁
+    if (room.empty()) {
+        m_MapRoomIdToUserId.erase(room_id);
+        cout << "room:" << room_id << "已经被销毁了" << endl;
+    }
 }
 
 CKernel *CKernel::GetKernel()

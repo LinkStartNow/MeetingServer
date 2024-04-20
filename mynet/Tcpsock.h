@@ -10,6 +10,8 @@ public:
 
 	Tcpsock(int sockfd): Mysock(sockfd) {}
 
+    Tcpsock(const Tcpsock& sock): Mysock(sock.m_sock) {}
+
     bool Write(const char* buf, int size);
 
     char* Read();

@@ -24,16 +24,15 @@ public:
         json_object_object_add(m_str,key, json_object_new_int(value));
     }
 
-    void json_add_value( const char * key,  std::vector<int> value){
+    void json_add_value( const char * key,  std::vector<int>& value){
         json_object *jarray = json_object_new_array();
         for (const int& x: value) {
             json_object_array_add(jarray, json_object_new_int(x));
         }
-        json_object_object_add(m_str,key, jarray);
+        json_object_object_add(m_str,key, json_object_get(jarray));
 
         // 回收空间
-        delete jarray;
-//        json_object_put(jarray);
+        json_object_put(jarray);
     }
 
     const char * json_to_string(){

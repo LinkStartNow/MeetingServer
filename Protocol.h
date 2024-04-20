@@ -3,7 +3,7 @@
 
 #define IP          ("192.168.59.129")
 #define PORT        (12345)
-#define PRO_CNT     (8)
+#define PRO_CNT     (10)
 #define MD5_KEY     ("1234")
 
 // 协议
@@ -24,6 +24,12 @@
 // 加入房间
 #define JOIN_ROOM_RQ    (PRO_BASE + 6)
 #define JOIN_ROOM_RS    (PRO_BASE + 7)
+
+// 通知加入
+#define JOIN_INFO       (PRO_BASE + 8)
+
+// 通知下线
+#define LEAVE_INFO      (PRO_BASE + 9)
 
 // 加入房间回复
 #define JOIN_SUCCESS    (0)

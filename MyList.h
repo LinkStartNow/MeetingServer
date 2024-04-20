@@ -14,11 +14,17 @@ class MyList
     mutex m_mtx;
 
 public:
-    vector<T> GetAll()
+//    vector<T> GetAll()
+//    {
+//        vector<T> res;
+//        for (auto x: m_list) res.emplace_back(x);
+//        return res;
+//    }
+
+    void Copy(vector<int>& v)
     {
-        vector<T> res;
-        for (auto x: m_list) res.emplace_back(x);
-        return res;
+        unique_lock<mutex> lck(m_mtx);
+        for (const int& x: m_list) v.emplace_back(x);
     }
 
     void emplace_back(T& v)
@@ -32,6 +38,11 @@ public:
         unique_lock<mutex> lck(m_mtx);
         for (auto x: m_list) if (x == v) return true;
         return false;
+    }
+
+    bool empty()
+    {
+        return m_list.empty();
     }
 
     void erase(T v)

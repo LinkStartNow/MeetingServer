@@ -26,6 +26,11 @@ struct UserInfo
     UserInfo() = default;
 
     UserInfo(const string& name, int sock): m_name(name), m_sock(sock) {}
+
+    Tcpsock* GetSock()
+    {
+        return new Tcpsock(m_sock);
+    }
 };
 
 class CKernel
@@ -49,6 +54,7 @@ class CKernel
     void DealRegRq(CJson*, Tcpsock*);
     void DealCreateRoom(CJson*, Tcpsock*);
     void DealJoinRoom(CJson*, Tcpsock*);
+    void DealLeaveInfo(CJson*, Tcpsock*);
 public:
 
     static CKernel* GetKernel();
