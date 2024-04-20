@@ -67,13 +67,17 @@ CKernel::CKernel(): m_sock_accept(new Tcpsock(IP, PORT)), m_epoll(new Myepoll), 
     }
 }
 
+
+
 void CKernel::SetFun()
 {
     cout << __func__ << endl;
     memset(m_ProToFun, 0, sizeof(m_ProToFun));
 
-    FUNMAP(LOG_RQ) = bind(&CKernel::DealLogRq, this, placeholders::_1, placeholders::_2);
-    FUNMAP(REG_RQ) = bind(&CKernel::DealRegRq, this, placeholders::_1, placeholders::_2);
+    FUNMAP(LOG_RQ)          = bind(&CKernel::DealLogRq, this, placeholders::_1, placeholders::_2);
+    FUNMAP(REG_RQ)          = bind(&CKernel::DealRegRq, this, placeholders::_1, placeholders::_2);
+    FUNMAP(CREATE_ROOM_RQ)  = bind(&CKernel::DealCreateRoom, this, placeholders::_1, placeholders::_2);
+    FUNMAP(JOIN_ROOM_RQ)    = bind(&CKernel::DealJoinRoom, this, placeholders::_1, placeholders::_2);
 }
 
 void Send(Tcpsock* sock, CJson& rs)
@@ -136,6 +140,7 @@ void CKernel::DealLogRq(CJson* buf, Tcpsock* sock)
     rs.json_add_value("icon", icon);
     rs.json_add_value("feeling", feeling.c_str());
     rs.json_add_value("name", name.c_str());
+    cout << name << " " << id << endl;
 //    const char* con = rs.json_to_string();
     Send(sock, rs);
 //    sock->Write(con, strlen(con) + 1);
@@ -195,6 +200,73 @@ void CKernel::DealRegRq(CJson* buf, Tcpsock* sock)
     }
     cout << query << endl;
     rs.json_add_value("result", REG_SUCCESS);
+    Send(sock, rs);
+}
+
+#include <time.h>
+#include <stdlib.h>
+void CKernel::DealCreateRoom(CJson *buf, Tcpsock *sock)
+{
+    cout << __func__ << endl;
+
+    // 创建房间
+    srand(time(NULL));
+    int RoomId;
+    while (1) {
+        RoomId = rand() % 99999999 + 1;
+        if (!m_MapRoomIdToUserId.count(RoomId)) break;
+    }
+
+    // 将当前用户加入房间
+    int UserId = buf->json_get_int("id");
+    m_MapRoomIdToUserId[RoomId].emplace_back(UserId);
+
+    cout << "room: " << RoomId << endl;
+    cout << "user:" << UserId << endl;
+
+    // 发回房间号
+    CJson rs;
+    rs.json_add_value("type", CREATE_ROOM_RS);
+    rs.json_add_value("RoomId", RoomId);
+    Send(sock, rs);
+}
+
+void CKernel::DealJoinRoom(CJson *buf, Tcpsock *sock)
+{
+    cout << __func__ << endl;
+
+    // 获得用户信息以及房间号
+    int UserId = buf->json_get_int("id");
+    int RoomId = buf->json_get_int("room_id");
+
+    CJson rs;
+    rs.json_add_value("type", JOIN_ROOM_RS);
+
+    // 如果房间不存在
+    if (!m_MapRoomIdToUserId.count(RoomId)) {
+        rs.json_add_value("result", ROOM_NOTEXIST);
+        Send(sock, rs);
+        return;
+    }
+
+    auto& room = m_MapRoomIdToUserId[RoomId];
+
+    // 将用户加入房间
+    room.emplace_back(UserId);
+
+    // 返回房间内所有用户id
+    vector<int>&& MemberList = room.GetAll();
+    cout << "room has: ";
+    for (int x: MemberList) cout << x << ' ';
+    cout << endl;
+
+
+    cout << "room: " << RoomId << endl;
+    cout << "user:" << UserId << endl;
+
+    // 发回房间号
+    rs.json_add_value("RoomId", RoomId);
+    rs.json_add_value("MemberList", MemberList);
     Send(sock, rs);
 }
 

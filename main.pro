@@ -19,6 +19,7 @@ include(mysql/mysql.pri)
 LIBS += -pthread
 
 HEADERS += \
+                MyList.h \
                 Protocol.h \
                 ckernel.h \
                 mymap.h
