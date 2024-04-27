@@ -14,6 +14,7 @@
 #include "mymap.h"
 #include "MyList.h"
 #include "Mysql.h"
+#include "CStruct.h"
 
 using namespace std;
 
@@ -22,14 +23,26 @@ struct UserInfo
 {
     string      m_name;
     Tcpsock     m_sock;
+    MemberInfo  m_info;
 
     UserInfo() = default;
 
     UserInfo(const string& name, int sock): m_name(name), m_sock(sock) {}
 
+    void SetInfo(const MemberInfo& info)
+    {
+        m_info = info;
+    }
+
     Tcpsock* GetSock()
     {
         return new Tcpsock(m_sock);
+    }
+
+    void Send(CJson& rs)
+    {
+        const char* con = rs.json_to_string();
+        m_sock.Write(con, strlen(con) + 1);
     }
 };
 
@@ -55,6 +68,9 @@ class CKernel
     void DealCreateRoom(CJson*, Tcpsock*);
     void DealJoinRoom(CJson*, Tcpsock*);
     void DealLeaveInfo(CJson*, Tcpsock*);
+
+    // 辅助函数
+//    MemberInfo GetInfoById(int id);
 public:
 
     static CKernel* GetKernel();

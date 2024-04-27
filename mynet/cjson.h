@@ -2,6 +2,7 @@
 #define CJSON_H
 #include"json.h"
 #include <vector>
+#include "CStruct.h"
 
 class CJson
 {
@@ -33,6 +34,31 @@ public:
 
         // 回收空间
         json_object_put(jarray);
+    }
+
+    // 添加成员信息
+    void json_add_value( MemberInfo& value){
+        json_add_value("id", value.m_id);
+        json_add_value("icon", value.m_icon);
+        json_add_value("name", value.m_name.c_str());
+    }
+
+    // 添加成员信息
+    void json_add_value( MemberInfo&& value){
+        json_add_value("id", value.m_id);
+        json_add_value("icon", value.m_icon);
+        json_add_value("name", value.m_name.c_str());
+    }
+
+    void json_add_value( const char * key,  std::vector<MemberInfo>& value){
+//        json_object *jarray = json_object_new_array();
+//        for (const int& x: value) {
+//            json_object_array_add(jarray, json_object_new_int(x));
+//        }
+//        json_object_object_add(m_str,key, json_object_get(jarray));
+
+//        // 回收空间
+//        json_object_put(jarray);
     }
 
     const char * json_to_string(){

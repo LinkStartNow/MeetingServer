@@ -134,11 +134,14 @@ void CKernel::DealLogRq(CJson* buf, Tcpsock* sock)
     string feeling = res.front(); res.pop_front();
     string name = res.front(); res.pop_front();
     m_MapIdToInfo.AddValue(id, UserInfo(name, sock->GetSock()));
+    MemberInfo info(name, id, icon);
+    m_MapIdToInfo.GetVal(id).SetInfo(info);
     rs.json_add_value("result", LOG_SUCCESS);
-    rs.json_add_value("id", id);
-    rs.json_add_value("icon", icon);
+    rs.json_add_value(info);
+//    rs.json_add_value("id", id);
+//    rs.json_add_value("icon", icon);
     rs.json_add_value("feeling", feeling.c_str());
-    rs.json_add_value("name", name.c_str());
+//    rs.json_add_value("name", name.c_str());
     cout << name << " " << id << endl;
 //    const char* con = rs.json_to_string();
     Send(sock, rs);
@@ -226,6 +229,13 @@ void CKernel::DealCreateRoom(CJson *buf, Tcpsock *sock)
     cout << "room: " << RoomId << endl;
     cout << "user:" << UserId << endl;
 
+    // 发送用户信息
+    CJson info;
+    auto& t = m_MapIdToInfo.GetVal(UserId);
+    info.json_add_value("type", JOIN_INFO);
+    info.json_add_value(t.m_info);
+    t.Send(info);
+
     // 发回房间号
     CJson rs;
     rs.json_add_value("type", CREATE_ROOM_RS);
@@ -263,15 +273,21 @@ void CKernel::DealJoinRoom(CJson *buf, Tcpsock *sock)
     vector<int> MemberList;
     room.Copy(MemberList);
 //    cout << "room has: ";
-    CJson log;
+    CJson log, mem;
     log.json_add_value("type", JOIN_INFO);
-    log.json_add_value("id", UserId);
+    mem.json_add_value("type", JOIN_INFO);
+    UserInfo& joiner = m_MapIdToInfo.GetVal(UserId);
+    log.json_add_value(joiner.m_info);
     for (int x: MemberList) {
         cout << x << ' ';
-        // 向其他用户发送上线信息
+        // 向所有用户发送上线信息
+        UserInfo& t = m_MapIdToInfo.GetVal(x);
+        t.Send(log);
+
+        // 发送给当前用户其他人的信息
         if (x != UserId) {
-            Tcpsock* to = m_MapIdToInfo.GetVal(x).GetSock();
-            Send(to, log);
+            mem.json_add_value(t.m_info);
+            joiner.Send(mem);
         }
     } cout << endl;
 
@@ -282,7 +298,8 @@ void CKernel::DealJoinRoom(CJson *buf, Tcpsock *sock)
     // 发回房间号
     rs.json_add_value("RoomId", RoomId);
     rs.json_add_value("MemberList", MemberList);
-    Send(sock, rs);
+//    Send(sock, rs);
+    joiner.Send(rs);
 }
 
 void CKernel::DealLeaveInfo(CJson *buf, Tcpsock *sock)
@@ -300,8 +317,10 @@ void CKernel::DealLeaveInfo(CJson *buf, Tcpsock *sock)
     // 给其他用户发信息，通知该用户离开
     for (const int& m: member) {
         if (m != user_id) {
-            Tcpsock* to = m_MapIdToInfo.GetVal(m).GetSock();
-            Send(to, *buf);
+//            Tcpsock* to = m_MapIdToInfo.GetVal(m).GetSock();
+//            Send(to, *buf);
+            auto& mem = m_MapIdToInfo.GetVal(m);
+            mem.Send(*buf);
         }
     }
 
@@ -317,6 +336,26 @@ void CKernel::DealLeaveInfo(CJson *buf, Tcpsock *sock)
         cout << "room:" << room_id << "已经被销毁了" << endl;
     }
 }
+
+//// 根据用户id查询信息
+//MemberInfo CKernel::GetInfoById(int id)
+//{
+//    MemberInfo ssr;
+//    char buf[200];
+//    sprintf(buf, "SELECT name, icon FROM t_user WHERE id = %d", id);
+//    list<string> res;
+//    m_sql->SelectMysql(buf, 2, res);
+
+//    while (res.size()) {
+//        ssr.m_name = res.front();
+//        res.pop_front();
+
+//        ssr.m_icon = atoi(res.front().c_str());
+//        res.pop_front();
+//    }
+//    ssr.m_id = id;
+//    return ssr;
+//}
 
 CKernel *CKernel::GetKernel()
 {
