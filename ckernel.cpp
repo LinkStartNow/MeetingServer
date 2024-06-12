@@ -42,13 +42,20 @@ CKernel::CKernel(): m_sock_accept(new Tcpsock(IP, PORT)), m_epoll(new Myepoll), 
             else {
                 char* buf;
                 Tcpsock* t = new Tcpsock(x.data.fd);
-                if (!(buf = t->Read())) {
+                int num;
+                if (!(buf = t->Read(num))) {
                     cout << "客户端已退出" << endl;
                     t->Close();
                     m_epoll->DelNode(t->GetSock());
                     continue;
                 }
 
+#if USE_NO_JSON_AUDIO
+                if (*(int*)buf == AUDIO) {
+                    DealAudio(buf, num);
+                    continue;
+                }
+#endif
                 // 将buf的数据还原
                 CJson* json = new CJson(buf);
 
@@ -77,6 +84,11 @@ void CKernel::SetFun()
     FUNMAP(CREATE_ROOM_RQ)  = bind(&CKernel::DealCreateRoom, this, placeholders::_1, placeholders::_2);
     FUNMAP(JOIN_ROOM_RQ)    = bind(&CKernel::DealJoinRoom, this, placeholders::_1, placeholders::_2);
     FUNMAP(LEAVE_INFO)      = bind(&CKernel::DealLeaveInfo, this, placeholders::_1, placeholders::_2);
+
+#if !USE_NO_JSON_AUDIO
+    FUNMAP(AUDIO)           = bind(&CKernel::DealAudio, this, placeholders::_1, placeholders::_2);
+#endif
+
 }
 
 void Send(Tcpsock* sock, CJson& rs)
@@ -336,6 +348,72 @@ void CKernel::DealLeaveInfo(CJson *buf, Tcpsock *sock)
         cout << "room:" << room_id << "已经被销毁了" << endl;
     }
 }
+
+#if USE_NO_JSON_AUDIO
+void CKernel::DealAudio(char *buf, int len)
+{
+    char* ssr = buf;
+
+    // 跳过type
+    ssr += sizeof(int);
+
+    // 读取UserId
+    int UserId = *(int*)ssr;
+    ssr += sizeof(int);
+
+    // 读取RoomId
+    int RoomId = *(int*)ssr;
+    ssr += sizeof(int);
+
+    auto& room = m_MapRoomIdToUserId[RoomId];
+    vector<int> member;
+    room.Copy(member);
+
+    // 音频转发
+    for (const int& m: member) {
+        if (m != UserId) {
+//            Tcpsock* to = m_MapIdToInfo.GetVal(m).GetSock();
+//            Send(to, *buf);
+            auto& mem = m_MapIdToInfo.GetVal(m);
+            mem.Send(buf, len);
+        }
+    }
+
+    delete[] buf;
+}
+
+#else
+void CKernel::DealAudio(CJson *buf, Tcpsock *sock)
+{
+    cout << __func__ << endl;
+
+    // 回收sock,这里用不到
+    delete sock; sock = nullptr;
+
+    // 获得用户信息以及房间号
+    int UserId = buf->json_get_int("UserId");
+    int RoomId = buf->json_get_int("RoomId");
+
+    auto& room = m_MapRoomIdToUserId[RoomId];
+    vector<int> member;
+    room.Copy(member);
+
+    printf("id = %d\n", UserId);
+
+    // 音频转发
+    for (const int& m: member) {
+        if (m != UserId) {
+//            Tcpsock* to = m_MapIdToInfo.GetVal(m).GetSock();
+//            Send(to, *buf);
+            auto& mem = m_MapIdToInfo.GetVal(m);
+            mem.Send(*buf);
+        }
+    }
+
+    // 回收json
+    delete buf; buf = nullptr;
+}
+#endif
 
 //// 根据用户id查询信息
 //MemberInfo CKernel::GetInfoById(int id)

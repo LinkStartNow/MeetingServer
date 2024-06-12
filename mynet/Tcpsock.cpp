@@ -39,7 +39,7 @@ bool Tcpsock::Write(const char* buf, int size)
 	return true;
 }
 
-char* Tcpsock::Read()
+char* Tcpsock::Read(int& len)
 {
 //	int t;
     int num = 0;
@@ -70,8 +70,9 @@ char* Tcpsock::Read()
 //	}
 
     num = *(int*)(sz);
+    len = num;
 
-    cout << "num:" << num << endl;
+    cout << "size:" << num << endl;
 
     char* buf = new char[num];
     max = num;

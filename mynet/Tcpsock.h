@@ -14,7 +14,7 @@ public:
 
     bool Write(const char* buf, int size);
 
-    char* Read();
+    char* Read(int& len);
 
 	bool Listen(int len = 128);
 

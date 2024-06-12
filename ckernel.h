@@ -44,6 +44,11 @@ struct UserInfo
         const char* con = rs.json_to_string();
         m_sock.Write(con, strlen(con) + 1);
     }
+
+    void Send(char* buf, int len)
+    {
+        m_sock.Write(buf, len);
+    }
 };
 
 class CKernel
@@ -68,6 +73,12 @@ class CKernel
     void DealCreateRoom(CJson*, Tcpsock*);
     void DealJoinRoom(CJson*, Tcpsock*);
     void DealLeaveInfo(CJson*, Tcpsock*);
+
+#if USE_NO_JSON_AUDIO
+    void DealAudio(char*, int);
+#else
+    void DealAudio(CJson*, Tcpsock*);
+#endif
 
     // 辅助函数
 //    MemberInfo GetInfoById(int id);
