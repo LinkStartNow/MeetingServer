@@ -73,9 +73,11 @@ class CKernel
     void DealCreateRoom(CJson*, Tcpsock*);
     void DealJoinRoom(CJson*, Tcpsock*);
     void DealLeaveInfo(CJson*, Tcpsock*);
+    void DealVedioClose(CJson*, Tcpsock*);
 
 #if USE_NO_JSON_AUDIO
     void DealAudio(char*, int);
+    void DealVedio(char*, int);
 #else
     void DealAudio(CJson*, Tcpsock*);
 #endif

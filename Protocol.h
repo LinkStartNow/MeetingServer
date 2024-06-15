@@ -3,7 +3,7 @@
 
 #define IP          ("192.168.59.129")
 #define PORT        (12345)
-#define PRO_CNT     (11)
+#define PRO_CNT     (13)
 #define MD5_KEY     ("1234")
 
 #define USE_NO_JSON_AUDIO (1)
@@ -35,6 +35,11 @@
 
 // 音频信息
 #define AUDIO           (PRO_BASE + 10)
+
+// 视频信息
+#define VEDIO           (PRO_BASE + 11)
+
+#define CLOSE_VEDIO     (PRO_BASE + 12)
 
 // 加入房间回复
 #define JOIN_SUCCESS    (0)

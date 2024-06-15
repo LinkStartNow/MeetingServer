@@ -55,6 +55,10 @@ CKernel::CKernel(): m_sock_accept(new Tcpsock(IP, PORT)), m_epoll(new Myepoll), 
                     DealAudio(buf, num);
                     continue;
                 }
+                else if (*(int*)buf == VEDIO) {
+                    DealVedio(buf, num);
+                    continue;
+                }
 #endif
                 // 将buf的数据还原
                 CJson* json = new CJson(buf);
@@ -84,6 +88,7 @@ void CKernel::SetFun()
     FUNMAP(CREATE_ROOM_RQ)  = bind(&CKernel::DealCreateRoom, this, placeholders::_1, placeholders::_2);
     FUNMAP(JOIN_ROOM_RQ)    = bind(&CKernel::DealJoinRoom, this, placeholders::_1, placeholders::_2);
     FUNMAP(LEAVE_INFO)      = bind(&CKernel::DealLeaveInfo, this, placeholders::_1, placeholders::_2);
+    FUNMAP(CLOSE_VEDIO)     = bind(&CKernel::DealVedioClose, this, placeholders::_1, placeholders::_2);
 
 #if !USE_NO_JSON_AUDIO
     FUNMAP(AUDIO)           = bind(&CKernel::DealAudio, this, placeholders::_1, placeholders::_2);
@@ -351,6 +356,32 @@ void CKernel::DealLeaveInfo(CJson *buf, Tcpsock *sock)
     }
 }
 
+void CKernel::DealVedioClose(CJson *buf, Tcpsock *sock)
+{
+    // 回收sock,这里用不到
+    delete sock; sock = nullptr;
+
+    int user_id = buf->json_get_int("UserId");
+    int room_id = buf->json_get_int("RoomId");
+
+    auto& room = m_MapRoomIdToUserId[room_id];
+    vector<int> member;
+    room.Copy(member);
+
+    // 给其他用户发信息，通知该用户离开
+    for (const int& m: member) {
+        if (m != user_id) {
+//            Tcpsock* to = m_MapIdToInfo.GetVal(m).GetSock();
+//            Send(to, *buf);
+            auto& mem = m_MapIdToInfo.GetVal(m);
+            mem.Send(*buf);
+        }
+    }
+
+    // 回收json
+    delete buf; buf = nullptr;
+}
+
 #if USE_NO_JSON_AUDIO
 void CKernel::DealAudio(char *buf, int len)
 {
@@ -372,6 +403,38 @@ void CKernel::DealAudio(char *buf, int len)
     room.Copy(member);
 
     // 音频转发
+    for (const int& m: member) {
+        if (m != UserId) {
+//            Tcpsock* to = m_MapIdToInfo.GetVal(m).GetSock();
+//            Send(to, *buf);
+            auto& mem = m_MapIdToInfo.GetVal(m);
+            mem.Send(buf, len);
+        }
+    }
+
+    delete[] buf;
+}
+
+void CKernel::DealVedio(char *buf, int len)
+{
+    char* ssr = buf;
+
+    // 跳过type
+    ssr += sizeof(int);
+
+    // 读取UserId
+    int UserId = *(int*)ssr;
+    ssr += sizeof(int);
+
+    // 读取RoomId
+    int RoomId = *(int*)ssr;
+    ssr += sizeof(int);
+
+    auto& room = m_MapRoomIdToUserId[RoomId];
+    vector<int> member;
+    room.Copy(member);
+
+    // 视频转发
     for (const int& m: member) {
         if (m != UserId) {
 //            Tcpsock* to = m_MapIdToInfo.GetVal(m).GetSock();
