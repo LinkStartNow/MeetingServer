@@ -288,10 +288,12 @@ void CKernel::DealJoinRoom(CJson *buf, Tcpsock *sock)
     CJson log, mem;
     log.json_add_value("type", JOIN_INFO);
     mem.json_add_value("type", JOIN_INFO);
+    mem.json_add_value("flag", NEW_IN);
     UserInfo& joiner = m_MapIdToInfo.GetVal(UserId);
     log.json_add_value(joiner.m_info);
     for (int x: MemberList) {
         cout << x << ' ';
+
         // 向所有用户发送上线信息
         UserInfo& t = m_MapIdToInfo.GetVal(x);
         t.Send(log);

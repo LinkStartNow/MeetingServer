@@ -6,7 +6,7 @@
 #define PRO_CNT     (11)
 #define MD5_KEY     ("1234")
 
-#define USE_NO_JSON_AUDIO (0)
+#define USE_NO_JSON_AUDIO (1)
 
 // 协议
 #define PRO_BASE    (6666)
@@ -40,6 +40,9 @@
 #define JOIN_SUCCESS    (0)
 #define JOIN_FAILED     (1)
 #define ROOM_NOTEXIST   (2)
+
+// 房间人员信息的获取flag
+#define NEW_IN          (1)
 
 // 登录回复
 #define LOG_SUCCESS (0)
